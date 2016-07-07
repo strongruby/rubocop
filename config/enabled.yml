@@ -1449,3 +1449,7 @@ Rails/UniqBeforePluck:
 Rails/Validation:
   Description: 'Use validates :attribute, hash of validations.'
   Enabled: true
+
+TypeCheck/DefaultLiteral:
+  Description: 'Typecheck literals as default parameter values.'
+  Enabled: true
