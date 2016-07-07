@@ -26,7 +26,8 @@ module RuboCop
                            :irange, :erange, :mlhs, :masgn, :or_asgn, :and_asgn,
                            :undef, :alias, :args, :super, :yield, :or, :and,
                            :while_post, :until_post, :iflipflop, :eflipflop,
-                           :match_with_lvasgn, :begin, :kwbegin, :return].freeze
+                           :match_with_lvasgn, :begin, :kwbegin, :return,
+                           :annot].freeze
       SECOND_CHILD_ONLY = [:lvasgn, :ivasgn, :cvasgn, :gvasgn, :optarg, :kwarg,
                            :kwoptarg].freeze
 

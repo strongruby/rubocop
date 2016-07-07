@@ -103,7 +103,7 @@ module RuboCop
       @tokens = tokens.map { |t| Token.from_parser_token(t) } if tokens
     end
 
-    def parser_class(ruby_version)
+    def parser_class(ruby_version) # rubocop:disable Metrics/MethodLength
       case ruby_version
       when 1.9
         require 'parser/ruby19'
@@ -120,6 +120,10 @@ module RuboCop
       when 2.3
         require 'parser/ruby23'
         Parser::Ruby23
+      # TODO: StrongRuby as 2.4
+      when 2.4
+        require 'parser/strongruby23'
+        Parser::StrongRuby23
       else
         raise ArgumentError, "Unknown Ruby version: #{ruby_version.inspect}"
       end
