@@ -1453,3 +1453,7 @@ Rails/Validation:
 TypeCheck/DefaultLiteral:
   Description: 'Typecheck literals as default parameter values.'
   Enabled: true
+
+TypeCheck/TypeChecker:
+  Description: 'StrongRuby typechecker.'
+  Enabled: true

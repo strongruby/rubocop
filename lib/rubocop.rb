@@ -388,6 +388,7 @@ require 'rubocop/cop/rails/uniq_before_pluck'
 require 'rubocop/cop/rails/validation'
 
 require 'rubocop/cop/type_check/default_literal'
+require 'rubocop/cop/type_check/type_checker'
 
 require 'rubocop/cop/team'
 

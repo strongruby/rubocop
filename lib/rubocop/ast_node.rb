@@ -43,6 +43,8 @@ module RuboCop
     OPERATOR_KEYWORDS = [:and, :or].freeze
     SPECIAL_KEYWORDS = %w(__FILE__ __LINE__ __ENCODING__).freeze
 
+    attr_accessor :typing
+
     # def_matcher can be used to define a pattern-matching method on Node
     class << self
       def def_matcher(method_name, pattern_str)
@@ -59,6 +61,8 @@ module RuboCop
     # @see http://rubydoc.info/gems/ast/AST/Node:initialize
     def initialize(type, children = [], properties = {})
       @mutable_attributes = {}
+
+      @typing = {}
 
       # ::AST::Node#initialize freezes itself.
       super
