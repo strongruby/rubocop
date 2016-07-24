@@ -70,6 +70,15 @@ module RuboCop
           node.typing[:return] = child.typing[:return]
         end
 
+        def on_cvasgn(node)
+          super
+
+          # TODO: Context, potential sharing with lvasgn et al.
+          if (child = node.children[1])
+            node.typing[:return] = child.typing[:return]
+          end
+        end
+
         def on_def(node)
           super
 
