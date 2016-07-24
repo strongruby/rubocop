@@ -113,6 +113,15 @@ module RuboCop
           super
         end
 
+        def on_gvasgn(node)
+          super
+
+          # TODO: Context, potential sharing with lvasgn et al.
+          if (child = node.children[1])
+            node.typing[:return] = child.typing[:return]
+          end
+        end
+
         def on_lvasgn(node)
           super
 
