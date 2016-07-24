@@ -89,6 +89,15 @@ module RuboCop
           super
         end
 
+        def on_ivasgn(node)
+          super
+
+          # TODO: Context, potential sharing with lvasgn.
+          if (child = node.children[1])
+            node.typing[:return] = child.typing[:return]
+          end
+        end
+
         def on_float(node)
           node.typing[:return] = :Float
 
