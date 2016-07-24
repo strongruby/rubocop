@@ -88,6 +88,32 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     end
   end
 
+  context 'on a nil literal of the return type' do
+    let(:source) do
+      ['def foo : NilClass',
+       '  nil',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a nil literal outside the return type' do
+    let(:source) do
+      ['def foo : NilClass',
+       '  1',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected NilClass, got Integer.'])
+    end
+  end
+
   context 'on a local literal assignment of the return type' do
     let(:source) do
       ['def foo : Integer',
@@ -189,6 +215,30 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
       expect(cop.offenses.size).to eq(1)
       expect(cop.messages)
         .to eq(['Bad return type: expected Float, got Integer.'])
+    end
+  end
+
+  context 'on an empty method of the return type' do
+    let(:source) do
+      ['def foo : NilClass',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on an empty method outside the return type' do
+    let(:source) do
+      ['def foo : Integer',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected Integer, got NilClass.'])
     end
   end
 end

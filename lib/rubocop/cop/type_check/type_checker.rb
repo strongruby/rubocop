@@ -82,11 +82,16 @@ module RuboCop
         def on_def(node)
           super
 
-          # TODO: nil case, inheritance, untyped case.
-          return unless (child = node.children[2]) # Traversal control
+          # TODO: inheritance, untyped case.
           return unless (annot = node.children[1]) && annot.type == :annot
+          # Modified traversal control to account for the nil case.
+          actual =
+            if (child = node.children[2])
+              child.typing[:return]
+            else
+              :NilClass
+            end
           expected = def_return_type(node)
-          actual = child.typing[:return]
           if expected != actual
             add_offense(node, :expression, bad_return_type(expected, actual))
           end
@@ -129,6 +134,12 @@ module RuboCop
           if (child = node.children[1])
             node.typing[:return] = child.typing[:return]
           end
+        end
+
+        def on_nil(node)
+          node.typing[:return] = :NilClass
+
+          super
         end
 
         def on_str(node)
