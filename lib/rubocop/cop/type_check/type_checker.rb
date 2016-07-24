@@ -95,6 +95,15 @@ module RuboCop
           super
         end
 
+        def on_lvasgn(node)
+          super
+
+          # TODO: Context.
+          if (child = node.children[1])
+            node.typing[:return] = child.typing[:return]
+          end
+        end
+
         def on_str(node)
           node.typing[:return] = :String
 
