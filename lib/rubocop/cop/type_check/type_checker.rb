@@ -89,6 +89,12 @@ module RuboCop
           super
         end
 
+        def on_float(node)
+          node.typing[:return] = :Float
+
+          super
+        end
+
         def on_str(node)
           node.typing[:return] = :String
 
