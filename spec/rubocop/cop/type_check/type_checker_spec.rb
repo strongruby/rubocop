@@ -293,4 +293,32 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad return type: expected Integer, got NilClass.'])
     end
   end
+
+  context 'returning a local variable with a value of the return type' do
+    let(:source) do
+      ['def foo : Integer',
+       '  bar = 1',
+       '  bar',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'returning a local variable with a value outside the return type' do
+    let(:source) do
+      ['def foo : Integer',
+       '  bar = "baz"',
+       '  bar',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected Integer, got String.'])
+    end
+  end
 end

@@ -34,6 +34,12 @@ module RuboCop
         # Common interface
         #
 
+        def initialize(config = nil, options = nil)
+          super
+
+          @local_context = {}
+        end
+
         # TODO: Appropriate version enforcement. StrongRuby as 2.4 hack.
         def target_ruby_version
           2.4
@@ -63,6 +69,14 @@ module RuboCop
         # Node traversal
         #
 
+        def on_begin(node)
+          super
+
+          # TODO: The following should be safe and guaranteed.
+          return unless (child = node.children[-1])
+          node.typing[:return] = child.typing[:return]
+        end
+
         def on_const(node)
           super
 
@@ -80,6 +94,10 @@ module RuboCop
         end
 
         def on_def(node)
+          # Save and create new local context. TODO: save?
+          local_context = @local_context
+          @local_context = {}
+
           super
 
           # TODO: inheritance, untyped case.
@@ -95,6 +113,8 @@ module RuboCop
           if expected != actual
             add_offense(node, :expression, bad_return_type(expected, actual))
           end
+          # Restore local context.
+          @local_context = local_context
         end
 
         def on_false(node)
@@ -133,12 +153,25 @@ module RuboCop
           end
         end
 
+        def on_lvar(node)
+          # TODO: Consider partial definitions and nil in context.
+          # else branch, unknown_local_variable "unknown in context".
+          variable = node.children[0]
+          if (type = @local_context[variable])
+            node.typing[:return] = type
+          end
+
+          super
+        end
+
         def on_lvasgn(node)
           super
 
           # TODO: Context.
           if (child = node.children[1])
+            # TODO: Refactor.
             node.typing[:return] = child.typing[:return]
+            @local_context[node.children[0]] = child.typing[:return]
           end
         end
 
