@@ -356,4 +356,30 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad return type: expected Integer, got nil.'])
     end
   end
+
+  context 'returning a parameter with a value of the return type' do
+    let(:source) do
+      ['def foo(bar : Integer) : Integer',
+       '  bar',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'returning a parameter with a value outside the return type' do
+    let(:source) do
+      ['def foo(bar : Integer) : Float',
+       '  bar',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected Float, got Integer.'])
+    end
+  end
 end

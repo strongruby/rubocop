@@ -69,6 +69,24 @@ module RuboCop
         # Node traversal
         #
 
+        def on_args(node)
+          super
+
+          node.children.each do |child|
+            case child.type
+            when :annot
+              name = child.children[0].children[0]
+              type = child.children[1].children[1]
+            when :arg
+              name = child.children[0]
+              type = :Object
+            else
+              next
+            end
+            @local_context[name] = type
+          end
+        end
+
         def on_begin(node)
           super
 
