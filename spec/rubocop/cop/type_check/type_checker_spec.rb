@@ -321,4 +321,39 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad return type: expected Integer, got String.'])
     end
   end
+
+  # TODO: This is a NameError in Ruby.
+  context 'returning a local variable undefined in the current context' do
+    let(:source) do
+      ['def foo : Integer',
+       '  bar = 1',
+       'end',
+       '',
+       'def baz : Integer',
+       '  bar',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected Integer, got nil.'])
+    end
+  end
+
+  # TODO: This is a NameError in Ruby.
+  context 'propagating a local variable undefined in the current context' do
+    let(:source) do
+      ['def foo : Integer',
+       '  bar = baz',
+       '  bar',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected Integer, got nil.'])
+    end
+  end
 end

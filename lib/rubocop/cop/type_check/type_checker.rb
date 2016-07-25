@@ -198,6 +198,7 @@ module RuboCop
         #
 
         def bad_return_type(expected, actual)
+          actual = 'nil' if actual.nil?
           "Bad return type: expected #{expected}, got #{actual}."
         end
 
