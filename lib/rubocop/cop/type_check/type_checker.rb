@@ -97,6 +97,12 @@ module RuboCop
           end
         end
 
+        def on_false(node)
+          node.typing[:return] = :FalseClass
+
+          super
+        end
+
         def on_int(node)
           node.typing[:return] = :Integer
 
@@ -144,6 +150,12 @@ module RuboCop
 
         def on_str(node)
           node.typing[:return] = :String
+
+          super
+        end
+
+        def on_true(node)
+          node.typing[:return] = :TrueClass
 
           super
         end
