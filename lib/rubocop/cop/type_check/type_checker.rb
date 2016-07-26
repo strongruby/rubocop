@@ -29,7 +29,7 @@ module RuboCop
       #   else
       #     bar = 'negative or zero'
       #   end
-      class TypeChecker < Cop
+      class TypeChecker < Cop # rubocop:disable Metrics/ClassLength
         #
         # Common interface
         #
@@ -143,7 +143,7 @@ module RuboCop
 
         # TODO: else branch (better/local errors), common point in hierarchy.
         def on_if(node)
-          super
+          if_super(node)
 
           return unless (then_child = node.children[1])
           else_type =
@@ -237,7 +237,7 @@ module RuboCop
         end
 
         #
-        # Helper methods
+        # Node helper methods
         #
 
         def def_return_type(node)
@@ -253,6 +253,42 @@ module RuboCop
             # Unannotated :args
             :Object
           end
+        end
+
+        def if_super(node)
+          raise unless node.type == :if
+          # Process the condition with the local context as usual.
+          children = node.children
+          child = children[0]
+          send(:"on_#{child.type}", child)
+          # Save the base context and process the then branch.
+          base_context = @local_context.clone
+          if (child = children[1])
+            send(:"on_#{child.type}", child)
+          end
+          # Save final branch context, restore base and process else branch.
+          then_context = @local_context
+          @local_context = base_context.clone
+          if (child = children[2])
+            send(:"on_#{child.type}", child)
+            # Finally, merge contexts (both cases).
+            else_context = @local_context
+            @local_context = merge_contexts(then_context, else_context)
+          else
+            @local_context = merge_contexts(base_context, then_context)
+          end
+        end
+
+        #
+        # General helper methods
+        #
+
+        def merge_contexts(context1, context2)
+          context = {}
+          context1.each do |key, value|
+            context[key] = value if context2[key] == value
+          end
+          context
         end
       end
     end

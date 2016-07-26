@@ -450,4 +450,116 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad return type: expected Integer, got nil.'])
     end
   end
+
+  context 'on a local variable of the return type, ' \
+    'freshly assigned in both branches of a conditional' do
+    let(:source) do
+      ['def foo(bar : Integer) : String',
+       '  if bar > 0',
+       '    baz = "one"',
+       '  else',
+       '    baz = "two"',
+       '  end',
+       '  baz',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a local variable of the return type, ' \
+    'previously and partially assigned in a single-branch conditional' do
+    let(:source) do
+      ['def foo(bar : Integer) : String',
+       '  baz = "zero"',
+       '  if bar > 0',
+       '    baz = "one"',
+       '  end',
+       '  baz',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  # TODO: How meaningful is this?
+  context 'on a local variable of the return type, ' \
+    'previously and partially assigned in a single-branch conditional' do
+    let(:source) do
+      ['def foo(bar : Integer) : String',
+       '  if bar > 0',
+       '    baz = "one"',
+       '  end',
+       '  baz = "zero"',
+       '  baz',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  # TODO: This could become the common superclass later on.
+  context 'on a local variable without typing information, ' \
+    'inconsistently assigned in both branches of a conditional' do
+    let(:source) do
+      ['def foo(bar : Integer) : String',
+       '  if bar > 0',
+       '    baz = 1',
+       '  else',
+       '    baz = "two"',
+       '  end',
+       '  baz',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected String, got nil.'])
+    end
+  end
+
+  context 'on a local variable without typing information, ' \
+    'partially assigned in a single-branch conditional' do
+    let(:source) do
+      ['def foo(bar : Integer) : String',
+       '  if bar > 0',
+       '    baz = "one"',
+       '  end',
+       '  baz',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected String, got nil.'])
+    end
+  end
+
+  context 'on a local variable without typing information, ' \
+    'partially assigned in a single branch of a conditional' do
+    let(:source) do
+      ['def foo(bar : Integer) : String',
+       '  if bar > 0',
+       '    baz = "one"',
+       '  else',
+       '    qux = "two"',
+       '  end',
+       '  baz',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected String, got nil.'])
+    end
+  end
 end
