@@ -271,12 +271,10 @@ module RuboCop
           @local_context = base_context.clone
           if (child = children[2])
             send(:"on_#{child.type}", child)
-            # Finally, merge contexts (both cases).
-            else_context = @local_context
-            @local_context = merge_contexts(then_context, else_context)
-          else
-            @local_context = merge_contexts(base_context, then_context)
           end
+          # Finally, merge contexts.
+          else_context = @local_context
+          @local_context = merge_contexts(then_context, else_context)
         end
 
         #
