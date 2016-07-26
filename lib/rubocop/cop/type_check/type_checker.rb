@@ -141,6 +141,18 @@ module RuboCop
           super
         end
 
+        # TODO: else branches, common point in hierarchy.
+        def on_if(node)
+          super
+
+          return unless (then_child = node.children[1])
+          if (else_child = node.children[2])
+            if (type = then_child.typing[:return]) == else_child.typing[:return]
+              node.typing[:return] = type
+            end
+          end
+        end
+
         def on_int(node)
           node.typing[:return] = :Integer
 
