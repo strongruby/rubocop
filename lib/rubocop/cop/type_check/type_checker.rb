@@ -95,13 +95,6 @@ module RuboCop
           node.typing[:return] = child.typing[:return]
         end
 
-        def on_const(node)
-          super
-
-          return unless (child = node.children[0]) # Traversal control
-          node.typing[:return] = child.typing[:return]
-        end
-
         def on_cvasgn(node)
           super
 
