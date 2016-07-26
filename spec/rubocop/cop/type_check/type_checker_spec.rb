@@ -562,4 +562,37 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad return type: expected String, got nil.'])
     end
   end
+
+  context 'on a local variable of the return type, ' \
+    'defined in the condition of an if' do
+    let(:source) do
+      ['def foo(bar : Integer) : Integer',
+       '  if (baz = bar)',
+       '  end',
+       '  baz',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a local variable of the return type, ' \
+    'freshly assigned from a condition variable in both branches' do
+    let(:source) do
+      ['def foo(bar : Integer) : Integer',
+       '  if (baz = bar)',
+       '    qux = baz',
+       '  else',
+       '    qux = baz',
+       '  end',
+       '  qux',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
 end
