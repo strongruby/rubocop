@@ -595,4 +595,42 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
       expect(cop.offenses).to be_empty
     end
   end
+
+  context 'on a new object of the return type' do
+    let(:source) do
+      ['def foo : Rational',
+       '  Rational.new(1, 2)',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a new object in the return type' do
+    let(:source) do
+      ['def foo : Numeric',
+       '  Rational.new(1, 2)',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a new object outside the return type' do
+    let(:source) do
+      ['def foo : Integer',
+       '  Numeric.new',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected Integer, got Numeric.'])
+    end
+  end
 end

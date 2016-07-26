@@ -95,6 +95,13 @@ module RuboCop
           node.typing[:return] = child.typing[:return]
         end
 
+        def on_const(node)
+          super
+
+          # TODO: Consider flow control and nesting.
+          node.typing[:return] = node.children[1]
+        end
+
         def on_cvasgn(node)
           super
 
@@ -121,7 +128,7 @@ module RuboCop
               :NilClass
             end
           expected = def_return_type(node)
-          if expected != actual
+          unless subclass_of?(actual, expected)
             add_offense(node, :expression, bad_return_type(expected, actual))
           end
           # Restore local context.
@@ -208,6 +215,17 @@ module RuboCop
           super
         end
 
+        def on_send(node)
+          super
+
+          # TODO: Arguments, type checking, general message handling.
+          if node.children[1] == :new
+            if (child = node.children[0])
+              node.typing[:return] = child.typing[:return]
+            end
+          end
+        end
+
         def on_str(node)
           node.typing[:return] = :String
 
@@ -280,6 +298,18 @@ module RuboCop
             context[key] = value if context2[key] == value
           end
           context
+        end
+
+        # source may be null or a symbol, target is a symbol. Fragile?
+        def subclass_of?(source, target)
+          return false if source.nil?
+          target_class = Object.const_get(target)
+          klass = Object.const_get(source)
+          while klass
+            return true if klass == target_class
+            klass = klass.superclass
+          end
+          false
         end
       end
     end
