@@ -418,4 +418,36 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad return type: expected Integer, got String.'])
     end
   end
+
+  context 'returning a single-branch conditional with ' \
+    'a nil return type' do
+    let(:source) do
+      ['def foo(bar : Integer) : NilClass',
+       '  if bar > 0',
+       '    nil',
+       '  end',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'returning a single-branch conditional with ' \
+    'other than a nil return type' do
+    let(:source) do
+      ['def foo(bar : Integer) : Integer',
+       '  if bar > 0',
+       '    bar',
+       '  end',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected Integer, got nil.'])
+    end
+  end
 end

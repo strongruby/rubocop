@@ -141,15 +141,19 @@ module RuboCop
           super
         end
 
-        # TODO: else branches, common point in hierarchy.
+        # TODO: else branch (better/local errors), common point in hierarchy.
         def on_if(node)
           super
 
           return unless (then_child = node.children[1])
-          if (else_child = node.children[2])
-            if (type = then_child.typing[:return]) == else_child.typing[:return]
-              node.typing[:return] = type
+          else_type =
+            if (else_child = node.children[2])
+              else_child.typing[:return]
+            else
+              :NilClass
             end
+          if (type = then_child.typing[:return]) == else_type
+            node.typing[:return] = type
           end
         end
 
