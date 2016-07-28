@@ -58,7 +58,8 @@ module RuboCop
         # TODO: It might be interesting to walk the AST and clean the typing
         # context before processing, or doing so on the go.
         def investigate(processed_source)
-          walk(processed_source.ast)
+          @root = processed_source.ast
+          walk(@root)
         end
 
         private
@@ -219,11 +220,15 @@ module RuboCop
           super
 
           # TODO: Arguments, type checking, general message handling.
-          if node.children[1] == :new
-            if (child = node.children[0])
-              node.typing[:return] = child.typing[:return]
+          receiver = node.children[0]
+          message = node.children[1]
+          node.typing[:return] =
+            case message
+            when :new
+              receiver.typing[:return] if receiver
+            else
+              send_return_type(node)
             end
-          end
         end
 
         def on_str(node)
@@ -286,6 +291,18 @@ module RuboCop
           # Finally, merge contexts.
           else_context = @local_context
           @local_context = merge_contexts(then_context, else_context)
+        end
+
+        # TODO: namespaces, overwrites.
+        def send_return_type(node)
+          raise unless node.type == :send
+          message = node.children[1]
+          type = nil
+          @root.each_descendant(:def) do |child|
+            name = child.children[0]
+            type = def_return_type(child) if name == message
+          end
+          type
         end
 
         #

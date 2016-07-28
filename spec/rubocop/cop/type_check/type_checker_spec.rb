@@ -633,4 +633,41 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad return type: expected Integer, got Numeric.'])
     end
   end
+
+  context 'on a local method call of the return type' do
+    let(:source) do
+      ['def foo : Integer',
+       '  bar',
+       'end',
+       '',
+       'def bar : Integer',
+       '  1',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a local method call outside the return type' do
+    let(:source) do
+      ['def foo : Integer',
+       '  bar',
+       'end',
+       '',
+       'def bar : String',
+       '  "one"',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected Integer, got String.'])
+    end
+  end
+
+  # TODO: An unknown parameterless method is indistinguishable from an undefined
+  # local variable, a case already covered. Rename/adjust further errors.
 end
