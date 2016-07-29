@@ -671,7 +671,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
   # TODO: An unknown parameterless method is indistinguishable from an undefined
   # local variable, a case already covered. Rename/adjust further errors.
 
-  context 'on a local method call with correct arity' do
+  context 'on a local method call with simple parameters and correct arity' do
     let(:source) do
       ['def foo',
        '  bar(1, 2, 3)',
@@ -686,7 +686,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     end
   end
 
-  context 'on a local method call with incorrect arity' do
+  context 'on a local method call with simple parameters and incorrect arity' do
     let(:source) do
       ['def foo',
        '  bar(1, 2)',
@@ -700,6 +700,40 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
       expect(cop.offenses.size).to eq(1)
       expect(cop.messages)
         .to eq(['Wrong number of arguments: expected 3, got 2.'])
+    end
+  end
+
+  context 'on a local method call with a simple parameter ' \
+    'of its formal type' do
+    let(:source) do
+      ['def foo',
+       '  bar(1)',
+       'end',
+       '',
+       'def bar(baz : Integer)',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a local method call with a simple parameter ' \
+    'outside its formal type' do
+    let(:source) do
+      ['def foo',
+       '  bar(1)',
+       'end',
+       '',
+       'def bar(baz : String)',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad argument type: expected String, got Integer.'])
     end
   end
 end

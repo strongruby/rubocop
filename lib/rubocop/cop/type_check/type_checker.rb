@@ -241,6 +241,12 @@ module RuboCop
         # Error messages
         #
 
+        # TODO: Refactor with bad_return_type?
+        def bad_argument_type(expected, actual)
+          actual = 'nil' if actual.nil?
+          "Bad argument type: expected #{expected}, got #{actual}."
+        end
+
         def bad_return_type(expected, actual)
           actual = 'nil' if actual.nil?
           "Bad return type: expected #{expected}, got #{actual}."
@@ -345,7 +351,9 @@ module RuboCop
           return unless (types = send_argument_types(node))
           n_expected = types.count
           n_actual = arguments.count
-          unless n_expected == n_actual
+          if n_expected == n_actual
+            arguments.zip(types).each { |pair| check_argument_type(pair) }
+          else
             add_offense(node, :expression,
                         wrong_number_of_arguments(n_expected, n_actual))
           end
@@ -367,6 +375,16 @@ module RuboCop
         # General helper methods
         #
 
+        def check_argument_type(node_type)
+          # TODO: Refactor type checking for return types
+          actual = node_type[0].typing[:return]
+          expected = node_type[1]
+          unless subclass_of?(actual, expected)
+            add_offense(node_type[0], :expression,
+                        bad_argument_type(expected, actual))
+          end
+        end
+
         def merge_contexts(context1, context2)
           context = {}
           context1.each do |key, value|
@@ -384,6 +402,8 @@ module RuboCop
             return true if klass == target_class
             klass = klass.superclass
           end
+          false
+        rescue NameError
           false
         end
       end
