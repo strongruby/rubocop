@@ -220,15 +220,9 @@ module RuboCop
           super
 
           # TODO: Arguments, type checking, general message handling.
-          receiver = node.children[0]
-          message = node.children[1]
-          node.typing[:return] =
-            case message
-            when :new
-              receiver.typing[:return] if receiver
-            else
-              send_return_type(node)
-            end
+          send_check_return_type(node)
+          # TODO: Sub-functions, retrieve constructors and typing.
+          send_check_argument_types(node)
         end
 
         def on_str(node)
@@ -252,9 +246,32 @@ module RuboCop
           "Bad return type: expected #{expected}, got #{actual}."
         end
 
+        # TODO: Harmonize with Ruby ArgumentError?
+        def wrong_number_of_arguments(expected, actual)
+          "Wrong number of arguments: expected #{expected}, got #{actual}."
+        end
+
         #
         # Node helper methods
         #
+
+        def def_argument_types(node)
+          raise unless node.type == :def
+          types = []
+          args = node.children[1]
+          args = args.children[0] if args.type == :annot
+          # TODO: refactor annot-args parsing.
+          args.children.each do |arg|
+            # TODO: else case, raising pollutes standard RuboCop analysis
+            case arg.type
+            when :annot
+              types << arg.children[1].children[1]
+            when :arg
+              types << :Object
+            end
+          end
+          types
+        end
 
         def def_return_type(node)
           raise unless node.type == :def
@@ -293,6 +310,20 @@ module RuboCop
           @local_context = merge_contexts(then_context, else_context)
         end
 
+        def send_check_return_type(node)
+          raise unless node.type == :send
+          receiver = node.children[0]
+          message = node.children[1]
+          node.typing[:return] =
+            case message
+            when :new
+              receiver.typing[:return] if receiver
+            else
+              # TODO: Receiver case.
+              send_return_type(node) unless receiver
+            end
+        end
+
         # TODO: namespaces, overwrites.
         def send_return_type(node)
           raise unless node.type == :send
@@ -303,6 +334,33 @@ module RuboCop
             type = def_return_type(child) if name == message
           end
           type
+        end
+
+        def send_check_argument_types(node)
+          raise unless node.type == :send
+          # TODO: Receiver case.
+          return if node.children[0]
+          arguments = node.children.drop(2)
+          # TODO: Error whenever signature not found?
+          return unless (types = send_argument_types(node))
+          n_expected = types.count
+          n_actual = arguments.count
+          unless n_expected == n_actual
+            add_offense(node, :expression,
+                        wrong_number_of_arguments(n_expected, n_actual))
+          end
+        end
+
+        # TODO: namespaces, overwrites, refactor with send_return_type.
+        def send_argument_types(node)
+          raise unless node.type == :send
+          message = node.children[1]
+          types = nil
+          @root.each_descendant(:def) do |child|
+            name = child.children[0]
+            types = def_argument_types(child) if name == message
+          end
+          types
         end
 
         #
