@@ -76,11 +76,15 @@ module RuboCop
           node.children.each do |child|
             case child.type
             when :annot
+              annot_check_optarg(child)
               name = child.children[0].children[0]
               type = child.children[1].children[1]
             when :arg
               name = child.children[0]
               type = :Object
+            when :optarg
+              name = child.children[0]
+              type = child.children[1].typing[:return]
             else
               next
             end
@@ -241,7 +245,12 @@ module RuboCop
         # Error messages
         #
 
-        # TODO: Refactor with bad_return_type?
+        def bad_optarg_type(expected, actual)
+          actual = 'nil' if actual.nil?
+          "Bad default type: expected #{expected}, got #{actual}."
+        end
+
+        # TODO: Refactor with bad_return_type et al.?
         def bad_argument_type(expected, actual)
           actual = 'nil' if actual.nil?
           "Bad argument type: expected #{expected}, got #{actual}."
@@ -260,6 +269,18 @@ module RuboCop
         #
         # Node helper methods
         #
+
+        def annot_check_optarg(node)
+          raise unless node.type == :annot
+          arg = node.children[0]
+          return unless arg.type == :optarg
+          annot_type = node.children[1].children[1]
+          default_type = arg.children[1].typing[:return]
+          unless subclass_of?(default_type, annot_type)
+            add_offense(node, :expression,
+                        bad_optarg_type(annot_type, default_type))
+          end
+        end
 
         def def_argument_types(node)
           raise unless node.type == :def

@@ -736,4 +736,30 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad argument type: expected String, got Integer.'])
     end
   end
+
+  context 'on a method declaration with an optional parameter ' \
+    'and a default value its formal type' do
+    let(:source) do
+      ['def foo(bar = 1 : Integer)',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a method declaration with an optional parameter ' \
+    'and a default value outside its formal type' do
+    let(:source) do
+      ['def foo(bar = 1 : Float)',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad default type: expected Float, got Integer.'])
+    end
+  end
 end
