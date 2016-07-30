@@ -762,4 +762,73 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad default type: expected Float, got Integer.'])
     end
   end
+
+  context 'on a local method call with an optional parameter ' \
+    'of the return type' do
+    let(:source) do
+      ['def foo : Integer',
+       '  bar(2)',
+       'end',
+       '',
+       'def bar(baz = 1 : Integer) : Integer',
+       '  baz',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a local method call with an optional parameter ' \
+    'outside the return type' do
+    let(:source) do
+      ['def foo',
+       '  bar(2.0)',
+       'end',
+       '',
+       'def bar(baz = 1 : Integer)',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad argument type: expected Integer, got Float.'])
+    end
+  end
+
+  context 'on a local method call with an omitted optional parameter \
+    and correct arity' do
+    let(:source) do
+      ['def foo',
+       '  bar',
+       'end',
+       '',
+       'def bar(baz = 1 : Integer)',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a local method call with optional parameters ' \
+    'and incorrect arity' do
+    let(:source) do
+      ['def foo',
+       '  bar(1, 2)',
+       'end',
+       '',
+       'def bar(baz = 1)',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Wrong number of arguments: expected 0..1, got 2.'])
+    end
+  end
 end

@@ -262,7 +262,13 @@ module RuboCop
         end
 
         # TODO: Harmonize with Ruby ArgumentError?
-        def wrong_number_of_arguments(expected, actual)
+        def wrong_number_of_arguments(expected_min, expected_max, actual)
+          expected =
+            if expected_min < expected_max
+              (expected_min..expected_max)
+            else
+              expected_max
+            end
           "Wrong number of arguments: expected #{expected}, got #{actual}."
         end
 
@@ -282,6 +288,19 @@ module RuboCop
           end
         end
 
+        # TODO: Possible refactoring with def_argument_types?
+        def def_argument_optargs(node)
+          raise unless node.type == :def
+          optargs = []
+          args = node.children[1]
+          args = args.children[0] if args.type == :annot
+          args.children.each_with_index do |arg, idx|
+            arg = arg.children[0] if arg.type == :annot
+            optargs << idx if arg.type == :optarg
+          end
+          optargs
+        end
+
         def def_argument_types(node)
           raise unless node.type == :def
           types = []
@@ -294,6 +313,8 @@ module RuboCop
             when :annot
               types << arg.children[1].children[1]
             when :arg
+              types << :Object
+            when :optarg
               types << :Object
             end
           end
@@ -369,27 +390,36 @@ module RuboCop
           return if node.children[0]
           arguments = node.children.drop(2)
           # TODO: Error whenever signature not found?
-          return unless (types = send_argument_types(node))
-          n_expected = types.count
+          return unless (types_optargs = send_argument_types(node))
+          types, optargs = types_optargs
+          n_max = types.count
+          n_min = n_max - optargs.count
           n_actual = arguments.count
-          if n_expected == n_actual
+          # TODO: Refine cases, re: limited safe scope and double comparison.
+          if n_actual == n_max
             arguments.zip(types).each { |pair| check_argument_type(pair) }
-          else
+          end
+          unless n_min <= n_actual && n_actual <= n_max
             add_offense(node, :expression,
-                        wrong_number_of_arguments(n_expected, n_actual))
+                        wrong_number_of_arguments(n_min, n_max, n_actual))
           end
         end
 
         # TODO: namespaces, overwrites, refactor with send_return_type.
+        # Possible renaming _types -> ???. Either all or no parts are nil.
         def send_argument_types(node)
           raise unless node.type == :send
           message = node.children[1]
           types = nil
+          optargs = nil
           @root.each_descendant(:def) do |child|
             name = child.children[0]
-            types = def_argument_types(child) if name == message
+            if name == message
+              types = def_argument_types(child)
+              optargs = def_argument_optargs(child)
+            end
           end
-          types
+          [types, optargs] if types
         end
 
         #
