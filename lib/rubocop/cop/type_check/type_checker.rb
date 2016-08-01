@@ -247,7 +247,9 @@ module RuboCop
         # TODO: Harmonize with Ruby ArgumentError?
         def bad_number_of_arguments(expected_min, expected_max, actual)
           expected =
-            if expected_min < expected_max
+            if expected_max.nil?
+              "#{expected_min}.."
+            elsif expected_min < expected_max
               (expected_min..expected_max)
             else
               expected_max
@@ -281,7 +283,7 @@ module RuboCop
           end
         end
 
-        # TODO: Possible refactoring with def_argument_types?
+        # TODO: Refactoring with def_argument_types et al.
         def def_argument_optargs(node)
           raise unless node.type == :def
           optargs = []
@@ -292,6 +294,18 @@ module RuboCop
             optargs << idx if arg.type == :optarg
           end
           optargs
+        end
+
+        def def_argument_splat(node)
+          raise unless node.type == :def
+          splat = nil
+          args = node.children[1]
+          args = args.children[0] if args.type == :annot
+          args.children.each_with_index do |arg, idx|
+            arg = arg.children[0] if arg.type == :annot
+            splat = idx if arg.type == :restarg
+          end
+          splat
         end
 
         def def_argument_types(node)
@@ -308,6 +322,8 @@ module RuboCop
             when :arg
               types << :Object
             when :optarg
+              types << :Object
+            when :restarg
               types << :Object
             end
           end
@@ -368,6 +384,57 @@ module RuboCop
           @local_context = merge_contexts(then_context, else_context)
         end
 
+        # TODO: namespaces, overwrites, refactor with send_return_type.
+        # Possible renaming _types -> ???. Either all or no parts are nil.
+        # Next "disable"
+        def send_argument_types(node)
+          raise unless node.type == :send
+          message = node.children[1]
+          types = nil
+          optargs = nil
+          splat = nil
+          @root.each_descendant(:def) do |child|
+            name = child.children[0]
+            if name == message # rubocop:disable Next
+              types = def_argument_types(child)
+              optargs = def_argument_optargs(child)
+              splat = def_argument_splat(child)
+            end
+          end
+          [types, optargs, splat] if types
+        end
+
+        # TODO: Reorder method. Make optargs a range? Simplify ABC.
+        def send_check_argument_types(node)
+          raise unless node.type == :send
+          # TODO: Receiver case.
+          return if node.children[0]
+          arguments = node.children.drop(2)
+          # TODO: Error whenever signature not found?
+          return unless (types_optargs = send_argument_types(node))
+          _, _, splat = types_optargs
+          if splat
+            send_check_splat(node, arguments, *types_optargs)
+          else
+            send_check_no_splat(node, arguments, *types_optargs)
+          end
+        end
+
+        def send_check_no_splat(node, arguments, types, optargs, splat)
+          raise unless node.type == :send && splat.nil?
+          n_actual = arguments.count
+          n_max = types.count
+          n_min = n_max - optargs.count
+          if n_min <= n_actual && n_actual <= n_max
+            optargs = optargs.drop(n_actual - n_min)
+            optargs.size.times { arguments.delete_at(optargs.first) }
+            arguments.zip(types).each { |pair| check_argument_type(pair) }
+          else
+            add_offense(node, :expression,
+                        bad_number_of_arguments(n_min, n_max, n_actual))
+          end
+        end
+
         def send_check_return_type(node)
           raise unless node.type == :send
           receiver = node.children[0]
@@ -382,6 +449,25 @@ module RuboCop
             end
         end
 
+        # TODO: Possible refactoring with no splat, case simplification.
+        def send_check_splat(node, arguments, types, optargs, splat)
+          raise unless node.type == :send
+          n_actual = arguments.count
+          n_min = types.count - optargs.count - 1
+          n_splat = n_actual - types.count + 1
+          if n_splat > 0
+            (n_splat - 1).times { types.insert(splat, types[splat]) }
+          else
+            types.delete_at(splat)
+          end
+          if n_min <= n_actual
+            arguments.zip(types).each { |pair| check_argument_type(pair) }
+          else
+            add_offense(node, :expression,
+                        bad_number_of_arguments(n_min, nil, n_actual))
+          end
+        end
+
         # TODO: namespaces, overwrites.
         def send_return_type(node)
           raise unless node.type == :send
@@ -392,45 +478,6 @@ module RuboCop
             type = def_return_type(child) if name == message
           end
           type
-        end
-
-        # TODO: Reorder method. Make optargs a range? Simplify ABC.
-        def send_check_argument_types(node) # rubocop:disable AbcSize
-          raise unless node.type == :send
-          # TODO: Receiver case.
-          return if node.children[0]
-          arguments = node.children.drop(2)
-          # TODO: Error whenever signature not found?
-          return unless (types_optargs = send_argument_types(node))
-          types, optargs = types_optargs
-          n_max = types.count
-          n_min = n_max - optargs.count
-          n_actual = arguments.count
-          if n_min <= n_actual && n_actual <= n_max
-            optargs = optargs.drop(n_actual - n_min)
-            optargs.size.times { arguments.delete_at(optargs.first) }
-            arguments.zip(types).each { |pair| check_argument_type(pair) }
-          else
-            add_offense(node, :expression,
-                        bad_number_of_arguments(n_min, n_max, n_actual))
-          end
-        end
-
-        # TODO: namespaces, overwrites, refactor with send_return_type.
-        # Possible renaming _types -> ???. Either all or no parts are nil.
-        def send_argument_types(node)
-          raise unless node.type == :send
-          message = node.children[1]
-          types = nil
-          optargs = nil
-          @root.each_descendant(:def) do |child|
-            name = child.children[0]
-            if name == message
-              types = def_argument_types(child)
-              optargs = def_argument_optargs(child)
-            end
-          end
-          [types, optargs] if types
         end
 
         #

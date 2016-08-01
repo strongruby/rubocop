@@ -923,4 +923,72 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad return type: expected Integer, got Array.'])
     end
   end
+
+  context 'on a local method call with a splat parameter and correct types' do
+    let(:source) do
+      ['def foo',
+       '  bar',
+       '  bar(1)',
+       '  bar(1, 2, 3)',
+       'end',
+       '',
+       'def bar(*baz : Integer)',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a local method call with a splat parameter and incorrect types' do
+    let(:source) do
+      ['def foo',
+       '  bar(1, 2.0, 3)',
+       'end',
+       '',
+       'def bar(*baz : Integer)',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad argument type: expected Integer, got Float.'])
+    end
+  end
+
+  context 'on a local method call with a splat parameter ' \
+    'surrounded by normal parameters, with correct types' do
+    let(:source) do
+      ['def foo',
+       '  bar(1.0, "two")',
+       '  bar(1.0, 2, 3, 4, "five")',
+       'end',
+       '',
+       'def bar(titi : Float, *tata : Integer, toto : String)',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a local method call with a splat parameter and incorrect arity' do
+    let(:source) do
+      ['def foo',
+       '  bar(1, 2)',
+       'end',
+       '',
+       'def bar(*titi, tata, toto, tutu)',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Wrong number of arguments: expected 3.., got 2.'])
+    end
+  end
 end
