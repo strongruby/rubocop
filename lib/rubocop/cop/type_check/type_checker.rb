@@ -123,19 +123,8 @@ module RuboCop
 
           super
 
-          # TODO: inheritance, untyped case.
-          return unless (annot = node.children[1]) && annot.type == :annot
-          # Modified traversal control to account for the nil case.
-          actual =
-            if (child = node.children[2])
-              child.typing[:return]
-            else
-              :NilClass
-            end
-          expected = def_return_type(node)
-          unless subclass_of?(actual, expected)
-            add_offense(node, :expression, bad_return_type(expected, actual))
-          end
+          def_check_return_type(node)
+
           # Restore local context.
           @local_context = local_context
         end
@@ -245,24 +234,14 @@ module RuboCop
         # Error messages
         #
 
-        def bad_optarg_type(expected, actual)
-          actual = 'nil' if actual.nil?
-          "Bad default type: expected #{expected}, got #{actual}."
-        end
-
         # TODO: Refactor with bad_return_type et al.?
         def bad_argument_type(expected, actual)
           actual = 'nil' if actual.nil?
           "Bad argument type: expected #{expected}, got #{actual}."
         end
 
-        def bad_return_type(expected, actual)
-          actual = 'nil' if actual.nil?
-          "Bad return type: expected #{expected}, got #{actual}."
-        end
-
         # TODO: Harmonize with Ruby ArgumentError?
-        def wrong_number_of_arguments(expected_min, expected_max, actual)
+        def bad_number_of_arguments(expected_min, expected_max, actual)
           expected =
             if expected_min < expected_max
               (expected_min..expected_max)
@@ -270,6 +249,16 @@ module RuboCop
               expected_max
             end
           "Wrong number of arguments: expected #{expected}, got #{actual}."
+        end
+
+        def bad_optarg_type(expected, actual)
+          actual = 'nil' if actual.nil?
+          "Bad default type: expected #{expected}, got #{actual}."
+        end
+
+        def bad_return_type(expected, actual)
+          actual = 'nil' if actual.nil?
+          "Bad return type: expected #{expected}, got #{actual}."
         end
 
         #
@@ -319,6 +308,23 @@ module RuboCop
             end
           end
           types
+        end
+
+        def def_check_return_type(node)
+          raise unless node.type == :def
+          # TODO: inheritance, untyped case.
+          return unless (annot = node.children[1]) && annot.type == :annot
+          # Modified traversal control to account for the nil case.
+          actual =
+            if (child = node.children[2])
+              child.typing[:return]
+            else
+              :NilClass
+            end
+          expected = def_return_type(node)
+          unless subclass_of?(actual, expected)
+            add_offense(node, :expression, bad_return_type(expected, actual))
+          end
         end
 
         def def_return_type(node)
@@ -384,7 +390,8 @@ module RuboCop
           type
         end
 
-        def send_check_argument_types(node)
+        # TODO: Reorder method. Make optargs a range? Simplify ABC.
+        def send_check_argument_types(node) # rubocop:disable Metrics/AbcSize
           raise unless node.type == :send
           # TODO: Receiver case.
           return if node.children[0]
@@ -394,14 +401,15 @@ module RuboCop
           types, optargs = types_optargs
           n_max = types.count
           n_min = n_max - optargs.count
-          n_actual = arguments.count
+          n_actual = arguments.size
           # TODO: Refine cases, re: limited safe scope and double comparison.
-          if n_actual == n_max
+          if n_min <= n_actual && n_actual <= n_max
+            optargs = optargs.drop(n_actual - n_min)
+            optargs.size.times { arguments.delete_at(optargs.first) }
             arguments.zip(types).each { |pair| check_argument_type(pair) }
-          end
-          unless n_min <= n_actual && n_actual <= n_max
+          else
             add_offense(node, :expression,
-                        wrong_number_of_arguments(n_min, n_max, n_actual))
+                        bad_number_of_arguments(n_min, n_max, n_actual))
           end
         end
 

@@ -798,8 +798,8 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     end
   end
 
-  context 'on a local method call with an omitted optional parameter \
-    and correct arity' do
+  context 'on a local method call with an omitted optional parameter ' \
+    'and correct arity' do
     let(:source) do
       ['def foo',
        '  bar',
@@ -829,6 +829,70 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
       expect(cop.offenses.size).to eq(1)
       expect(cop.messages)
         .to eq(['Wrong number of arguments: expected 0..1, got 2.'])
+    end
+  end
+
+  context 'on a method declaration with a single block of consecutive ' \
+    'optional parameters' do
+    let(:source) do
+      ['def foo(titi, tata = 2, toto = 3, tutu)',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  # context 'on a method declaration with nonconsecutive optional parameters' do
+  #   let(:source) do
+  #     ['def foo(titi = 1, tata, toto = 3)',
+  #      'end']
+  #   end
+  #
+  #   it 'registers an offense' do
+  #   end
+  # end
+
+  context 'on a local method call with or without its optional parameters, ' \
+    'given in the correct order' do
+    let(:source) do
+      ['def foo',
+       '  bar(1, Rational.new(4, 1))',
+       '  bar(1, 1.4142, Rational.new(4, 1))',
+       '  bar(1, 6.022e23, "three", Rational.new(4, 1))',
+       'end',
+       '',
+       'def bar(titi : Integer,',
+       '        tata = 2.0 : Float,',
+       '        toto = "3" : String,',
+       '        tutu : Rational)',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a local method call with or without its optional parameters, ' \
+    'given in an incorrect order' do
+    let(:source) do
+      ['def foo',
+       '  bar(1, nil, Rational.new(4, 1))',
+       'end',
+       '',
+       'def bar(titi : Integer,',
+       '        tata = 2.0 : Float,',
+       '        toto = "3" : String,',
+       '        tutu : Rational)',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad argument type: expected Float, got NilClass.'])
     end
   end
 end
