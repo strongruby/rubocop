@@ -895,4 +895,32 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad argument type: expected Float, got NilClass.'])
     end
   end
+
+  context 'returning a named splat argument with a value ' \
+    'of the return type' do
+    let(:source) do
+      ['def foo(*bar) : Array',
+       '  bar',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'returning a named splat argument with a value ' \
+    'outside the return type' do
+    let(:source) do
+      ['def foo(*bar) : Integer',
+       '  bar',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected Integer, got Array.'])
+    end
+  end
 end

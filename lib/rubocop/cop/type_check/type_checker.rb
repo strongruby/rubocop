@@ -29,7 +29,7 @@ module RuboCop
       #   else
       #     bar = 'negative or zero'
       #   end
-      class TypeChecker < Cop # rubocop:disable Metrics/ClassLength
+      class TypeChecker < Cop # rubocop:disable ClassLength
         #
         # Common interface
         #
@@ -70,7 +70,8 @@ module RuboCop
         # Node traversal
         #
 
-        def on_args(node)
+        # TODO: Refactor assignments/ABC?
+        def on_args(node) # rubocop:disable MethodLength, AbcSize
           super
 
           node.children.each do |child|
@@ -85,6 +86,9 @@ module RuboCop
             when :optarg
               name = child.children[0]
               type = child.children[1].typing[:return]
+            when :restarg
+              name = child.children[0]
+              type = :Array
             else
               next
             end
@@ -391,7 +395,7 @@ module RuboCop
         end
 
         # TODO: Reorder method. Make optargs a range? Simplify ABC.
-        def send_check_argument_types(node) # rubocop:disable Metrics/AbcSize
+        def send_check_argument_types(node) # rubocop:disable AbcSize
           raise unless node.type == :send
           # TODO: Receiver case.
           return if node.children[0]
@@ -401,8 +405,7 @@ module RuboCop
           types, optargs = types_optargs
           n_max = types.count
           n_min = n_max - optargs.count
-          n_actual = arguments.size
-          # TODO: Refine cases, re: limited safe scope and double comparison.
+          n_actual = arguments.count
           if n_min <= n_actual && n_actual <= n_max
             optargs = optargs.drop(n_actual - n_min)
             optargs.size.times { arguments.delete_at(optargs.first) }
