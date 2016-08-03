@@ -231,6 +231,12 @@ module RuboCop
           super
         end
 
+        def on_rational(node)
+          node.typing[:return] = :Rational
+
+          super
+        end
+
         def on_send(node)
           super
 
