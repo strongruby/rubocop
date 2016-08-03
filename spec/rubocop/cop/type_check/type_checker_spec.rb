@@ -88,6 +88,32 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     end
   end
 
+  context 'on a complex literal of the return type' do
+    let(:source) do
+      ['def foo : Complex',
+       '  2i',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a complex literal outside the return type' do
+    let(:source) do
+      ['def foo : Complex',
+       '  1',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected Complex, got Integer.'])
+    end
+  end
+
   context 'on a nil literal of the return type' do
     let(:source) do
       ['def foo : NilClass',

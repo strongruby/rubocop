@@ -110,6 +110,12 @@ module RuboCop
           node.typing[:return] = child.typing[:return]
         end
 
+        def on_complex(node)
+          node.typing[:return] = :Complex
+
+          super
+        end
+
         def on_const(node)
           super
 
