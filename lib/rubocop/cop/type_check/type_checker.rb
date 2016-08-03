@@ -96,6 +96,12 @@ module RuboCop
           end
         end
 
+        def on_array(node)
+          node.typing[:return] = :Array
+
+          super
+        end
+
         def on_begin(node)
           super
 
