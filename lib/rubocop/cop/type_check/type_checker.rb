@@ -240,6 +240,12 @@ module RuboCop
           super
         end
 
+        def on_sym(node)
+          node.typing[:return] = :Symbol
+
+          super
+        end
+
         def on_true(node)
           node.typing[:return] = :TrueClass
 
