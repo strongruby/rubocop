@@ -191,6 +191,12 @@ module RuboCop
           end
         end
 
+        def on_hash(node)
+          node.typing[:return] = :Hash
+
+          super
+        end
+
         def on_lvar(node)
           # TODO: Consider partial definitions and nil in context.
           # else branch, unknown_local_variable "unknown in context".
