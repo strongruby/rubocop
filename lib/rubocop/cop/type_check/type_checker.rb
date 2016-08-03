@@ -404,7 +404,7 @@ module RuboCop
           [types, optargs, splat] if types
         end
 
-        # TODO: Reorder method. Make optargs a range? Simplify ABC.
+        # TODO: Make optargs a range?
         def send_check_argument_types(node)
           raise unless node.type == :send
           # TODO: Receiver case.
@@ -412,7 +412,7 @@ module RuboCop
           arguments = node.children.drop(2)
           # TODO: Error whenever signature not found?
           return unless (types_optargs = send_argument_types(node))
-          _, _, splat = types_optargs
+          splat = types_optargs[2]
           if splat
             send_check_splat(node, arguments, *types_optargs)
           else

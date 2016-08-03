@@ -924,7 +924,8 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     end
   end
 
-  context 'on a local method call with a splat parameter and correct types' do
+  context 'on a local method call with a named splat parameter ' \
+    'and correct types' do
     let(:source) do
       ['def foo',
        '  bar',
@@ -941,7 +942,8 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     end
   end
 
-  context 'on a local method call with a splat parameter and incorrect types' do
+  context 'on a local method call with a named splat parameter ' \
+    'and incorrect types' do
     let(:source) do
       ['def foo',
        '  bar(1, 2.0, 3)',
@@ -958,7 +960,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     end
   end
 
-  context 'on a local method call with a splat parameter ' \
+  context 'on a local method call with a named splat parameter ' \
     'surrounded by normal parameters, with correct types' do
     let(:source) do
       ['def foo',
@@ -975,7 +977,8 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     end
   end
 
-  context 'on a local method call with a splat parameter and incorrect arity' do
+  context 'on a local method call with a named splat parameter ' \
+    'and incorrect arity' do
     let(:source) do
       ['def foo',
        '  bar(1, 2)',
