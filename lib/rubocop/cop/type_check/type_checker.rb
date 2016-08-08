@@ -59,6 +59,7 @@ module RuboCop
         # context before processing, or doing so on the go.
         def investigate(processed_source)
           @root = processed_source.ast
+          @signature = Signature.new(@root)
           walk(@root)
         end
 
@@ -313,53 +314,6 @@ module RuboCop
           end
         end
 
-        # TODO: Refactoring with def_argument_types et al.
-        def def_argument_optargs(node)
-          raise unless node.type == :def
-          optargs = []
-          args = node.children[1]
-          args = args.children[0] if args.type == :annot
-          args.children.each_with_index do |arg, idx|
-            arg = arg.children[0] if arg.type == :annot
-            optargs << idx if arg.type == :optarg
-          end
-          optargs
-        end
-
-        def def_argument_splat(node)
-          raise unless node.type == :def
-          splat = nil
-          args = node.children[1]
-          args = args.children[0] if args.type == :annot
-          args.children.each_with_index do |arg, idx|
-            arg = arg.children[0] if arg.type == :annot
-            splat = idx if arg.type == :restarg
-          end
-          splat
-        end
-
-        def def_argument_types(node)
-          raise unless node.type == :def
-          types = []
-          args = node.children[1]
-          args = args.children[0] if args.type == :annot
-          # TODO: refactor annot-args parsing.
-          args.children.each do |arg|
-            # TODO: else case, raising pollutes standard RuboCop analysis
-            case arg.type
-            when :annot
-              types << arg.children[1].children[1]
-            when :arg
-              types << :Object
-            when :optarg
-              types << :Object
-            when :restarg
-              types << :Object
-            end
-          end
-          types
-        end
-
         def def_check_return_type(node)
           raise unless node.type == :def
           # TODO: inheritance, untyped case.
@@ -371,7 +325,9 @@ module RuboCop
             else
               :NilClass
             end
-          expected = def_return_type(node)
+          message = node.children[0]
+          # TODO: Assuming type_of is safe here.
+          expected = @signature.type_of(message).return_type
           unless subclass_of?(actual, expected)
             add_offense(node, :expression, bad_return_type(expected, actual))
           end
@@ -420,21 +376,13 @@ module RuboCop
         def send_argument_types(node)
           raise unless node.type == :send
           message = node.children[1]
-          types = nil
-          optargs = nil
-          splat = nil
-          @root.each_descendant(:def) do |child|
-            name = child.children[0]
-            if name == message # rubocop:disable Next
-              types = def_argument_types(child)
-              optargs = def_argument_optargs(child)
-              splat = def_argument_splat(child)
-            end
+          if (type = @signature.type_of(message))
+            [type.argument_types, type.optargs, type.splat]
           end
-          [types, optargs, splat] if types
         end
 
-        # TODO: Make optargs a range?
+        # TODO: Make optargs a range? Interface with send_argument_types can be
+        # further cleaned up.
         def send_check_argument_types(node)
           raise unless node.type == :send
           # TODO: Receiver case.
@@ -502,12 +450,9 @@ module RuboCop
         def send_return_type(node)
           raise unless node.type == :send
           message = node.children[1]
-          type = nil
-          @root.each_descendant(:def) do |child|
-            name = child.children[0]
-            type = def_return_type(child) if name == message
+          if (type = @signature.type_of(message)) # rubocop:disable GuardClause
+            type.return_type
           end
-          type
         end
 
         #
@@ -544,6 +489,145 @@ module RuboCop
           false
         rescue NameError
           false
+        end
+
+        #
+        # Helper classes
+        #
+
+        # Abstraction of a Ruby type signature. It includes information about
+        # optional parameters, splats, etc., for typechecking of method calls.
+        # It currently follows closely the conventions used in previous
+        # iterations of the code, but will be abstracted and refined as more
+        # features are added.
+        #
+        # Types are (currently) internally represented as flat arrays of
+        # symbols, of at least one element, representing simple arrow types.
+        # However, Proc will give rise to the equivalent of higher-order types,
+        # including but not limited to their use as block arguments.
+        class Type
+          def initialize(types, optargs, splat)
+            @types = types
+            @optargs = optargs
+            @splat = splat
+          end
+
+          def argument_types
+            @types.slice(0, @types.length - 1)
+          end
+
+          def return_type
+            @types.last
+          end
+
+          attr_reader :optargs
+
+          attr_reader :splat
+        end
+
+        # Abstraction of a program signature.
+        #
+        # The current convention is to address signatures by way of a sequence
+        # of nested namespaces (modules and classes) culminated by a method.
+        # This indexing gives access to all relevant typing information, which
+        # should be available before the main type checking pass.
+        #
+        # Eventually, a signature must include visibility information, and
+        # consider the identity of the caller, if this check is not delegated
+        # to the user. Additionally, typing of class variables will be part of
+        # the static type signature as well.
+        class Signature
+          def initialize(node)
+            @signature = {}
+            @namespace = []
+            walk(node)
+          end
+
+          def type_of(*callee)
+            @signature[callee]
+          end
+
+          private
+
+          include RuboCop::Node::Traversal
+
+          def on_def(node)
+            name = node.children[0]
+            key = @namespace.clone.push(name)
+            types = def_argument_types(node)
+            types << def_return_type(node)
+            optargs = def_argument_optargs(node)
+            splat = def_argument_splat(node)
+            @signature[key] = Type.new(types, optargs, splat)
+
+            super
+          end
+
+          #
+          # Node helper methods
+          #
+
+          # TODO: Refactoring with def_argument_types et al.
+          def def_argument_optargs(node)
+            raise unless node.type == :def
+            optargs = []
+            args = node.children[1]
+            args = args.children[0] if args.type == :annot
+            args.children.each_with_index do |arg, idx|
+              arg = arg.children[0] if arg.type == :annot
+              optargs << idx if arg.type == :optarg
+            end
+            optargs
+          end
+
+          def def_argument_splat(node)
+            raise unless node.type == :def
+            splat = nil
+            args = node.children[1]
+            args = args.children[0] if args.type == :annot
+            args.children.each_with_index do |arg, idx|
+              arg = arg.children[0] if arg.type == :annot
+              splat = idx if arg.type == :restarg
+            end
+            splat
+          end
+
+          def def_argument_types(node)
+            raise unless node.type == :def
+            types = []
+            args = node.children[1]
+            args = args.children[0] if args.type == :annot
+            # TODO: refactor annot-args parsing.
+            args.children.each do |arg|
+              # TODO: else case, raising pollutes standard RuboCop analysis
+              case arg.type
+              when :annot
+                types << arg.children[1].children[1]
+              when :arg
+                types << :Object
+              when :optarg
+                types << :Object
+              when :restarg
+                types << :Object
+              end
+            end
+            types
+          end
+
+          def def_return_type(node)
+            raise unless node.type == :def
+            child = node.children[1]
+            if child.type == :annot
+              # The following should be safe
+              grandchild = child.children[1]
+              raise unless grandchild.type == :const
+              raise unless (greatgrandchild = grandchild.children[1])
+              greatgrandchild
+            else
+              # Unannotated :args
+              :Object
+            end
+          end
         end
       end
     end
