@@ -38,6 +38,7 @@ module RuboCop
           super
 
           @local_context = {}
+          @namespace = [] # Cf. on_class
         end
 
         # TODO: Appropriate version enforcement. StrongRuby as 2.4 hack.
@@ -109,6 +110,17 @@ module RuboCop
           # TODO: The following should be safe and guaranteed.
           return unless (child = node.children[-1])
           node.typing[:return] = child.typing[:return]
+        end
+
+        # TODO: Potential refactoring with Signature.
+        def on_class(node)
+          constant = node.children[0]
+          name = constant.children[1]
+          @namespace.push(name)
+
+          super
+
+          @namespace.pop
         end
 
         def on_complex(node)
@@ -241,13 +253,9 @@ module RuboCop
         def on_send(node)
           super
 
-          query = []
-          receiver = node.children[0]
-          if receiver && (klass = send_receiver_type(receiver))
-            query << klass
-          end
+          klass = send_receiver_class(node)
           message = node.children[1]
-          query << message
+          query = klass.clone.push(message)
           # TODO: General treatment of new.
           if @signature.type_of(*query) || message == :new
             send_check_return_type(node)
@@ -286,7 +294,12 @@ module RuboCop
         end
 
         def bad_method(method, klass)
-          klass = 'nil' if klass.nil?
+          klass =
+            if klass.empty?
+              'nil'
+            else
+              klass.join('::')
+            end
           "Bad method: #{method} undefined in class #{klass}."
         end
 
@@ -463,7 +476,27 @@ module RuboCop
           end
         end
 
+        # TODO: There needs to be a standard to represent complex classes and
+        # namespaces in an abstract manner; nesting is not universally
+        # supported yet, and where namespaces are being built in, it is as a
+        # stack that is built during traversal of the AST.
+        def send_receiver_class(node)
+          raise unless node.type == :send
+          receiver = node.children[0]
+          if receiver
+            if (type = send_receiver_type(receiver))
+              [type]
+            else
+              # TODO: An impossible case if all works (not yet)?
+              []
+            end
+          else
+            @namespace
+          end
+        end
+
         def send_receiver_type(node)
+          # TODO: Pass send node and work on the child directly?
           case node.type
           # TODO: Remaining cases
           when :lvar

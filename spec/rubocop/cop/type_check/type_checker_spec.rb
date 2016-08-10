@@ -1135,7 +1135,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
   # Contexts and visibility
   #
 
-  context 'on a defined method method call on an external class' do
+  context 'on a defined method call on an external class' do
     let(:source) do
       ['def foo',
        '  bar = Bar.new',
@@ -1170,6 +1170,39 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
       expect(cop.offenses.size).to eq(1)
       expect(cop.messages)
         .to eq(['Bad method: qux undefined in class Bar.'])
+    end
+  end
+
+  context 'on a defined method call in class scope' do
+    let(:source) do
+      ['class Foo',
+       '  def bar',
+       '    baz',
+       '  end',
+       '',
+       '  def baz',
+       '  end',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on an undefined method call in class scope' do
+    let(:source) do
+      ['class Foo',
+       '  def bar',
+       '    baz',
+       '  end',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad method: baz undefined in class Foo.'])
     end
   end
 end
