@@ -10,6 +10,10 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     inspect_source(cop, source)
   end
 
+  #
+  # Basic typechecking
+  #
+
   context 'on an integer literal of the return type' do
     let(:source) do
       ['def foo : Integer',
@@ -465,9 +469,10 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     end
 
     it 'registers an offense' do
-      expect(cop.offenses.size).to eq(1)
+      expect(cop.offenses.size).to eq(2)
       expect(cop.messages)
-        .to eq(['Bad return type: expected Integer, got nil.'])
+        .to eq(['Bad return type: expected Integer, got nil.',
+                'Bad method: bar undefined in class nil.'])
     end
   end
 
@@ -481,9 +486,10 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     end
 
     it 'registers an offense' do
-      expect(cop.offenses.size).to eq(1)
+      expect(cop.offenses.size).to eq(2)
       expect(cop.messages)
-        .to eq(['Bad return type: expected Integer, got nil.'])
+        .to eq(['Bad return type: expected Integer, got nil.',
+                'Bad method: baz undefined in class nil.'])
     end
   end
 
@@ -517,7 +523,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     'in both branches' do
     let(:source) do
       ['def foo(bar : Integer) : Integer',
-       '  if bar > 0',
+       '  if bar',
        '    1',
        '  else',
        '    -1',
@@ -534,7 +540,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     'in both branches' do
     let(:source) do
       ['def foo(bar : Integer) : Integer',
-       '  if bar > 0',
+       '  if bar',
        '    "one"',
        '  else',
        '    "minus one"',
@@ -553,7 +559,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     'a nil return type' do
     let(:source) do
       ['def foo(bar : Integer) : NilClass',
-       '  if bar > 0',
+       '  if bar',
        '    nil',
        '  end',
        'end']
@@ -568,7 +574,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     'other than a nil return type' do
     let(:source) do
       ['def foo(bar : Integer) : Integer',
-       '  if bar > 0',
+       '  if bar',
        '    bar',
        '  end',
        'end']
@@ -585,7 +591,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     'freshly assigned in both branches of a conditional' do
     let(:source) do
       ['def foo(bar : Integer) : String',
-       '  if bar > 0',
+       '  if bar',
        '    baz = "one"',
        '  else',
        '    baz = "two"',
@@ -604,7 +610,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     let(:source) do
       ['def foo(bar : Integer) : String',
        '  baz = "zero"',
-       '  if bar > 0',
+       '  if bar',
        '    baz = "one"',
        '  end',
        '  baz',
@@ -621,7 +627,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     'previously and partially assigned in a single-branch conditional' do
     let(:source) do
       ['def foo(bar : Integer) : String',
-       '  if bar > 0',
+       '  if bar',
        '    baz = "one"',
        '  end',
        '  baz = "zero"',
@@ -639,7 +645,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     'inconsistently assigned in both branches of a conditional' do
     let(:source) do
       ['def foo(bar : Integer) : String',
-       '  if bar > 0',
+       '  if bar',
        '    baz = 1',
        '  else',
        '    baz = "two"',
@@ -659,7 +665,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     'partially assigned in a single-branch conditional' do
     let(:source) do
       ['def foo(bar : Integer) : String',
-       '  if bar > 0',
+       '  if bar',
        '    baz = "one"',
        '  end',
        '  baz',
@@ -677,7 +683,7 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
     'partially assigned in a single branch of a conditional' do
     let(:source) do
       ['def foo(bar : Integer) : String',
-       '  if bar > 0',
+       '  if bar',
        '    baz = "one"',
        '  else',
        '    qux = "two"',
@@ -1122,6 +1128,48 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
       expect(cop.offenses.size).to eq(1)
       expect(cop.messages)
         .to eq(['Wrong number of arguments: expected 3.., got 2.'])
+    end
+  end
+
+  #
+  # Contexts and visibility
+  #
+
+  context 'on a defined method method call on an external class' do
+    let(:source) do
+      ['def foo',
+       '  bar = Bar.new',
+       '  bar.baz',
+       'end',
+       '',
+       'class Bar',
+       '  def baz',
+       '  end',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on an undefined method call on an external class' do
+    let(:source) do
+      ['def foo',
+       '  bar = Bar.new',
+       '  bar.qux',
+       'end',
+       '',
+       'class Bar',
+       '  def baz',
+       '  end',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad method: qux undefined in class Bar.'])
     end
   end
 end

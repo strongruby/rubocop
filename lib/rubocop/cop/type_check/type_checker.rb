@@ -241,10 +241,20 @@ module RuboCop
         def on_send(node)
           super
 
-          # TODO: Arguments, type checking, general message handling.
-          send_check_return_type(node)
-          # TODO: Sub-functions, retrieve constructors and typing.
-          send_check_argument_types(node)
+          query = []
+          receiver = node.children[0]
+          if receiver && (klass = send_receiver_type(receiver))
+            query << klass
+          end
+          message = node.children[1]
+          query << message
+          # TODO: General treatment of new.
+          if @signature.type_of(*query) || message == :new
+            send_check_return_type(node)
+            send_check_argument_types(node)
+          else
+            add_offense(node, :expression, bad_method(message, klass))
+          end
         end
 
         def on_str(node)
@@ -273,6 +283,11 @@ module RuboCop
         def bad_argument_type(expected, actual)
           actual = 'nil' if actual.nil?
           "Bad argument type: expected #{expected}, got #{actual}."
+        end
+
+        def bad_method(method, klass)
+          klass = 'nil' if klass.nil?
+          "Bad method: #{method} undefined in class #{klass}."
         end
 
         # TODO: Harmonize with Ruby ArgumentError?
@@ -381,6 +396,7 @@ module RuboCop
           end
         end
 
+        # TODO: Sub-functions, retrieve constructors and typing.
         # TODO: Make optargs a range? Interface with send_argument_types can be
         # further cleaned up.
         def send_check_argument_types(node)
@@ -413,6 +429,7 @@ module RuboCop
           end
         end
 
+        # TODO: Arguments, type checking, general message handling.
         def send_check_return_type(node)
           raise unless node.type == :send
           receiver = node.children[0]
@@ -443,6 +460,14 @@ module RuboCop
           else
             add_offense(node, :expression,
                         bad_number_of_arguments(n_min, nil, n_actual))
+          end
+        end
+
+        def send_receiver_type(node)
+          case node.type
+          # TODO: Remaining cases
+          when :lvar
+            @local_context[node.children[0]]
           end
         end
 
@@ -550,6 +575,21 @@ module RuboCop
           private
 
           include RuboCop::Node::Traversal
+
+          #
+          # Node traversal
+          #
+
+          # TODO: For now assuming a simplified treatment of names.
+          def on_class(node)
+            constant = node.children[0]
+            name = constant.children[1]
+            @namespace.push(name)
+
+            super
+
+            @namespace.pop
+          end
 
           def on_def(node)
             name = node.children[0]
