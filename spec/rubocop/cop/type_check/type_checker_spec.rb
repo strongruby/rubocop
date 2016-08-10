@@ -1205,4 +1205,41 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad method: baz undefined in class Foo.'])
     end
   end
+
+  context 'on a defined method call in class scope' do
+    let(:source) do
+      ['class Foo',
+       '  class Bar',
+       '    def baz',
+       '      qux',
+       '    end',
+       '',
+       '    def qux',
+       '    end',
+       '  end',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on an undefined method call in class scope' do
+    let(:source) do
+      ['class Foo',
+       '  class Bar',
+       '    def baz',
+       '      qux',
+       '    end',
+       '  end',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad method: qux undefined in class Foo::Bar.'])
+    end
+  end
 end
