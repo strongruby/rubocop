@@ -216,6 +216,26 @@ module RuboCop
           super
         end
 
+        # TODO: Refactor with on_lvar.
+        def on_ivar(node)
+          variable = node.children[0]
+          if (type = @local_context[variable])
+            node.typing[:return] = type
+          end
+
+          super
+        end
+
+        # TODO: Refactor with on_lvasgn.
+        def on_ivasgn(node)
+          super
+
+          if (child = node.children[1])
+            node.typing[:return] = child.typing[:return]
+            @local_context[node.children[0]] = child.typing[:return]
+          end
+        end
+
         def on_lvar(node)
           # TODO: Consider partial definitions and nil in context.
           # else branch, unknown_local_variable "unknown in context".
