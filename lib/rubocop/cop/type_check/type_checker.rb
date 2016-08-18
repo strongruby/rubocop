@@ -595,23 +595,18 @@ module RuboCop
         # to the user. Additionally, typing of class variables will be part of
         # the static type signature as well.
         class Signature
+          CORE = 'lib/rubocop/cop/type_check/core/core.d.srb'.freeze
+
+          # TODO: Signature organization, versioning.
           def initialize(node)
-            @signature = {}
-            @superclass = {
-              SimpleObject: nil,
-              Object: :SimpleObject,
-              NilClass: :Object,
-              TrueClass: :Object,
-              FalseClass: :Object,
-              Numeric: :Object,
-              Complex: :Numeric,
-              Float: :Numeric,
-              Rational: :Numeric,
-              Integer: :Numeric,
-              Fixnum: :Integer,
-              Bignum: :Integer
-            }
             @namespace = []
+
+            @signature = {}
+            @superclass = {}
+
+            core = RuboCop::ProcessedSource.from_file(CORE, 2.4)
+            walk(core.ast)
+
             walk(node)
           end
 
@@ -646,6 +641,9 @@ module RuboCop
             constant = node.children[0]
             name = constant.children[1]
             @namespace.push(name)
+            superclass = node.children[1]
+            superclass = superclass.children[1] if superclass
+            @superclass[name] = superclass
 
             super
 

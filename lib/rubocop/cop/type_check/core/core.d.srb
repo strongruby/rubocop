@@ -1,0 +1,39 @@
+# encoding: utf-8
+#
+# frozen_string_literal: true
+
+class SimpleObject
+end
+
+class Object < SimpleObject
+end
+
+class NilClass < Object
+end
+
+class TrueClass < Object
+end
+
+class FalseClass < Object
+end
+
+class Numeric < Object
+end
+
+class Integer < Numeric
+end
+
+class Float < Numeric
+end
+
+class Rational < Numeric
+end
+
+class Complex < Numeric
+end
+
+class Fixnum < Integer
+end
+
+class Bignum < Integer
+end
