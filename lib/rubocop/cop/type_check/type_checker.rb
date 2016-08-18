@@ -350,7 +350,7 @@ module RuboCop
           return unless arg.type == :optarg
           annot_type = node.children[1].children[1]
           default_type = arg.children[1].typing[:return]
-          unless subclass_of?(default_type, annot_type)
+          unless @signature.subclass_of?(default_type, annot_type)
             add_offense(node, :expression,
                         bad_optarg_type(annot_type, default_type))
           end
@@ -370,7 +370,7 @@ module RuboCop
           message = node.children[0]
           # TODO: Assuming type_of is safe here.
           expected = @signature.type_of(message).return_type
-          unless subclass_of?(actual, expected)
+          unless @signature.subclass_of?(actual, expected)
             add_offense(node, :expression, bad_return_type(expected, actual))
           end
         end
@@ -535,7 +535,7 @@ module RuboCop
           # TODO: Refactor type checking for return types
           actual = node_type[0].typing[:return]
           expected = node_type[1]
-          unless subclass_of?(actual, expected)
+          unless @signature.subclass_of?(actual, expected)
             add_offense(node_type[0], :expression,
                         bad_argument_type(expected, actual))
           end
@@ -547,20 +547,6 @@ module RuboCop
             context[key] = value if context2[key] == value
           end
           context
-        end
-
-        # source may be null or a symbol, target is a symbol. Fragile?
-        def subclass_of?(source, target)
-          return false if source.nil?
-          target_class = Object.const_get(target)
-          klass = Object.const_get(source)
-          while klass
-            return true if klass == target_class
-            klass = klass.superclass
-          end
-          false
-        rescue NameError
-          false
         end
 
         #
@@ -611,8 +597,36 @@ module RuboCop
         class Signature
           def initialize(node)
             @signature = {}
+            @superclass = {
+              SimpleObject: nil,
+              Object: :SimpleObject,
+              NilClass: :Object,
+              TrueClass: :Object,
+              FalseClass: :Object,
+              Numeric: :Object,
+              Complex: :Numeric,
+              Float: :Numeric,
+              Rational: :Numeric,
+              Integer: :Numeric,
+              Fixnum: :Integer,
+              Bignum: :Integer
+            }
             @namespace = []
             walk(node)
+          end
+
+          # source may be null or a symbol, target is a symbol. Fragile?
+          def subclass_of?(klass, maybe_super)
+            return true if klass == maybe_super
+            if (superclass = @superclass[klass])
+              if superclass == maybe_super
+                true
+              else
+                subclass_of?(superclass, maybe_super)
+              end
+            else
+              false
+            end
           end
 
           def type_of(*callee)
