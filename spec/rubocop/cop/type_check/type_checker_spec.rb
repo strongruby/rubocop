@@ -1272,4 +1272,30 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad method: qux undefined in class Foo::Bar.'])
     end
   end
+
+  context 'on a standard instance variable in the return type' do
+    let(:source) do
+      ['def foo : Object',
+       '  @bar',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a standard instance variable outside the return type' do
+    let(:source) do
+      ['def foo : Integer',
+       '  @bar',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected Integer, got Object.'])
+    end
+  end
 end

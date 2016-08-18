@@ -164,6 +164,27 @@ module RuboCop
           super
         end
 
+        def on_float(node)
+          node.typing[:return] = :Float
+
+          super
+        end
+
+        def on_gvasgn(node)
+          super
+
+          # TODO: Context, potential sharing with lvasgn et al.
+          if (child = node.children[1])
+            node.typing[:return] = child.typing[:return]
+          end
+        end
+
+        def on_hash(node)
+          node.typing[:return] = :Hash
+
+          super
+        end
+
         # TODO: else branch (better/local errors), common point in hierarchy.
         def on_if(node)
           if_super(node)
@@ -186,42 +207,15 @@ module RuboCop
           super
         end
 
-        def on_ivasgn(node)
-          super
-
-          # TODO: Context, potential sharing with lvasgn.
-          if (child = node.children[1])
-            node.typing[:return] = child.typing[:return]
-          end
-        end
-
-        def on_float(node)
-          node.typing[:return] = :Float
-
-          super
-        end
-
-        def on_gvasgn(node)
-          super
-
-          # TODO: Context, potential sharing with lvasgn et al.
-          if (child = node.children[1])
-            node.typing[:return] = child.typing[:return]
-          end
-        end
-
-        def on_hash(node)
-          node.typing[:return] = :Hash
-
-          super
-        end
-
         # TODO: Refactor with on_lvar.
         def on_ivar(node)
           variable = node.children[0]
-          if (type = @local_context[variable])
-            node.typing[:return] = type
-          end
+          node.typing[:return] =
+            if (type = @local_context[variable])
+              type
+            else
+              :Object
+            end
 
           super
         end
