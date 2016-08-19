@@ -267,14 +267,13 @@ module RuboCop
         def on_send(node)
           super
 
-          klass = send_receiver_class(node)
           message = node.children[1]
-          query = klass.clone.push(message)
           # TODO: General treatment of new.
-          if @signature.type_of(*query) || message == :new
+          if send_type_of(node) || message == :new
             send_check_return_type(node)
             send_check_argument_types(node)
           else
+            klass = send_receiver_class(node)
             add_offense(node, :expression, bad_method(message, klass))
           end
         end
@@ -466,8 +465,7 @@ module RuboCop
             when :new
               receiver.typing[:return] if receiver
             else
-              # TODO: Receiver case.
-              send_return_type(node) unless receiver
+              send_return_type(node)
             end
         end
 
@@ -521,10 +519,17 @@ module RuboCop
         # TODO: namespaces, overwrites.
         def send_return_type(node)
           raise unless node.type == :send
-          message = node.children[1]
-          if (type = @signature.type_of(message)) # rubocop:disable GuardClause
+          if (type = send_type_of(node)) # rubocop:disable GuardClause
             type.return_type
           end
+        end
+
+        def send_type_of(node)
+          raise unless node.type == :send
+          klass = send_receiver_class(node)
+          message = node.children[1]
+          query = klass.clone.push(message)
+          @signature.type_of(*query)
         end
 
         #
@@ -624,8 +629,21 @@ module RuboCop
             end
           end
 
+          def to_s
+            "signature #{@signature}, superclass #{@superclass}"
+          end
+
+          # TODO: Full namespace support (currently, class-method pair).
+          # Simplify interface to class-method.
           def type_of(*callee)
-            @signature[callee]
+            if (signature = @signature[callee])
+              signature
+            elsif callee.length > 1
+              klass = callee[0]
+              return unless (superclass = @superclass[klass])
+              sub_callee = callee.slice(1, callee.length - 1)
+              type_of(superclass, *sub_callee)
+            end
           end
 
           private

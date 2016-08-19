@@ -1325,4 +1325,52 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
                 'Bad method: float? undefined in class Integer.'])
     end
   end
+
+  context 'on a method call defined in a superclass' do
+    let(:source) do
+      ['def foo',
+       '  baz = Baz.new',
+       '  baz.bar',
+       'end',
+       '',
+       'class Bar',
+       '  def bar',
+       '  end',
+       'end',
+       '',
+       'class Baz < Bar',
+       '  def baz',
+       '  end',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on a method call undefined in the class and its superclasses' do
+    let(:source) do
+      ['def foo',
+       '  baz = Baz.new',
+       '  baz.qux',
+       'end',
+       '',
+       'class Bar',
+       '  def bar',
+       '  end',
+       'end',
+       '',
+       'class Baz < Bar',
+       '  def baz',
+       '  end',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad method: qux undefined in class Baz.'])
+    end
+  end
 end
