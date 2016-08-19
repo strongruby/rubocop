@@ -21,6 +21,8 @@ class Numeric < Object
 end
 
 class Integer < Numeric
+  def integer? : TrueClass
+  end
 end
 
 class Float < Numeric

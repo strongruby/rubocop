@@ -1292,10 +1292,37 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
        'end']
     end
 
-    it "doesn't register an offense" do
+    it 'registers an offense' do
       expect(cop.offenses.size).to eq(1)
       expect(cop.messages)
         .to eq(['Bad return type: expected Integer, got Object.'])
+    end
+  end
+
+  context 'on a defined core instance method' do
+    let(:source) do
+      ['def foo(bar : Integer) : TrueClass',
+       '  bar.integer?',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'on an undefined core instance method' do
+    let(:source) do
+      ['def foo(bar : Integer) : FalseClass',
+       '  bar.float?',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(2)
+      expect(cop.messages)
+        .to eq(['Bad return type: expected FalseClass, got nil.',
+                'Bad method: float? undefined in class Integer.'])
     end
   end
 end
