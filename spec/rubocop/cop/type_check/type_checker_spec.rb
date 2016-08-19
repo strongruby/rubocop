@@ -1373,4 +1373,34 @@ describe RuboCop::Cop::TypeCheck::TypeChecker do
         .to eq(['Bad method: qux undefined in class Baz.'])
     end
   end
+
+  context 'expecting an Object from a class without an explicit superclass' do
+    let(:source) do
+      ['def foo : Object',
+       '  Bar.new',
+       'end',
+       '',
+       'class Bar',
+       'end']
+    end
+
+    it "doesn't register an offense" do
+      expect(cop.offenses).to be_empty
+    end
+  end
+
+  context 'using Object functionality from outside the hierarchy' do
+    let(:source) do
+      ['def foo',
+       '  bar = SimpleObject.new',
+       '  bar.class',
+       'end']
+    end
+
+    it 'registers an offense' do
+      expect(cop.offenses.size).to eq(1)
+      expect(cop.messages)
+        .to eq(['Bad method: class undefined in class SimpleObject.'])
+    end
+  end
 end

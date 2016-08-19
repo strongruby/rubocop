@@ -603,15 +603,18 @@ module RuboCop
           CORE = 'lib/rubocop/cop/type_check/core/core.d.srb'.freeze
 
           # TODO: Signature organization, versioning.
+          # Consider alternative to @default_to_object.
           def initialize(node)
             @namespace = []
 
             @signature = {}
             @superclass = {}
 
+            @default_to_object = false
             core = RuboCop::ProcessedSource.from_file(CORE, 2.4)
             walk(core.ast)
 
+            @default_to_object = true
             walk(node)
           end
 
@@ -660,7 +663,11 @@ module RuboCop
             name = constant.children[1]
             @namespace.push(name)
             superclass = node.children[1]
-            superclass = superclass.children[1] if superclass
+            if superclass.nil?
+              superclass = :Object if @default_to_object
+            else
+              superclass = superclass.children[1]
+            end
             @superclass[name] = superclass
 
             super

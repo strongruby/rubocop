@@ -6,6 +6,8 @@ class SimpleObject
 end
 
 class Object < SimpleObject
+  def class : Class
+  end
 end
 
 class NilClass < Object
